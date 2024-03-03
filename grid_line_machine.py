@@ -1,6 +1,7 @@
 # Standard Library Imports
 from __future__ import annotations
 from dataclasses import dataclass
+
 # Third Party Imports
 from typing import Any, List, Tuple, Iterator, Optional, Generic, TypeVar
 
@@ -8,6 +9,8 @@ from typing import Any, List, Tuple, Iterator, Optional, Generic, TypeVar
 
 
 T = TypeVar("T")
+
+
 @dataclass
 class GridLine(Generic[T]):
     name: str
@@ -15,7 +18,7 @@ class GridLine(Generic[T]):
     tp: Optional[float] = None
     last_grid_line: Optional[GridLine[T]] = None
     next_grid_line: Optional[GridLine[T]] = None
-    in_trade:Optional[bool] = False 
+    in_trade: Optional[bool] = False
 
     def __repr__(self):
 
@@ -32,21 +35,33 @@ class GridLine(Generic[T]):
 
 
 class GridLineManager:  # Calculate Grid Lines and keeps track of between which grids price currently is
-    def __init__(self, _grid_start_price: float,_tp:float, _round_prices_to: int = 4):
-        """Given a price x will generate grid with 11 (5 grids above and 5 grids below _grid_start_price) as self.grid_lines
-        _grid_start_price: takes it as starting point and generates geomatic grids above and below it (@Dev for now generates constant 5 grids change in for loop in @func calculate_grid_lines
+    def __init__(
+        self,
+        _central_grid_price: float,
+        _distance_between_grids: float,
+        _number_of_grids_on_each_side_of_grid_start_price: int,
+        _round_prices_to: int = 4,
+    ):
+        """Given a _grid_start_price (x) will generate grids with (_number_of_grids_on_each_side_of_grid_start_price) on both sides of grid start price
+
+        _grid_start_price: price where to center grid around
+        _distance_between_grids: Distance between each grid in percentage i.e (0.1 == 10%)
         _round_prices_to: how many decimals the price of ticker is"""
+
+
         self.in_region = (
             tuple()
-        )  # Points to which region price(0.104) currently is Region.region(0.103, 0.106)
+        )  # Points to which region price(0.104) currently is Region.region(0.103, 0.106) @Dev not used anywhere yet
 
         self.round_price_to = _round_prices_to
-        self.tp = _tp
+        self.tp = _distance_between_grids
+        self.grids_on_each_side_of_grid_start_price = _number_of_grids_on_each_side_of_grid_start_price
+        self.central_grid_price = round(_central_grid_price, _round_prices_to)
 
-        # Something went wrong from here calculate_grid_lines and create_grid_line_objects are getting locked in a recurcive loop  
-        self.grid_lines = self.calculate_grid_lines(_grid_start_price)
+        # First calculate grid lines list bcz it is used by create grid line objects
+        self.grid_lines = self.calculate_grid_lines()
 
-        # Create Grid Lines dict to output which grid line the price reflects (Allocates human readable grid line names to grid lines lower grid lines to upper 1 -> 10
+
         self.grid_lines_as_objects = self.create_grid_line_objects()
         self.current_grid_line_number = 0
         # self.max_number_of_grid_lines = 11
@@ -60,12 +75,41 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
         if self.current_grid_line_number < len(self.grid_lines_as_objects):
             return self.grid_lines_as_objects[self.current_grid_line_number]
 
-        raise StopIteration 
+        raise StopIteration
 
+    def calculate_grid_lines(self) -> List[float]:
+        """
+        _grid_start_price : First price where grid should start spanning above and below as in mid point for grid i.e central_grid_price
+        """
+
+        _grid_start_price = self.central_grid_price
+        grid_lines: List[float] = [_grid_start_price]
+        _number_of_gridlines_on_each_side = self.grids_on_each_side_of_grid_start_price
+
+        # Grid line above mp
+        _next_line_price = _grid_start_price
+        # Grid line below mp
+        _last_line_price = _grid_start_price
+
+        # 5 grid lines above current mp
+        for _ in range(_number_of_gridlines_on_each_side):
+            _next_line_price = round(
+                _next_line_price + (_next_line_price * self.tp), self.round_price_to
+            )
+            grid_lines.append(_next_line_price)
+
+        # 5 grid lines below current mp
+        for _ in range(_number_of_gridlines_on_each_side):
+            _last_line_price = round(
+                _last_line_price - (_last_line_price * self.tp), self.round_price_to
+            )
+            grid_lines.append(_last_line_price)
+
+        grid_lines.sort()
+        return grid_lines
 
     def create_grid_line_objects(self) -> List[GridLine]:
         grid_lines = self.grid_lines
-
         grid_lines_obj_list: List[GridLine] = []
 
         for index, grid_line in enumerate(grid_lines, start=1):
@@ -75,63 +119,33 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
             )
             grid_lines_obj_list.append(current_grid_line)
 
-            # creating GridLines such that each represt a grid and if it's tp,sl,has been hit or pending for ease of use later on
-
         # next Grid Line above current grid line  3
         # current Grid Line current grid line     2
         # last Grid Line below current grid line  1
 
+        # add next/last properties to grid line objects making them a linked list with referances to last and next grid lines
         for index, grid_line_obj in enumerate(grid_lines_obj_list):
 
             try:
                 next_grid_line = grid_lines_obj_list[index + 1]
             except IndexError as e:
-                next_grid_line =  None
+                next_grid_line = None
 
             current_grid_line = grid_line_obj
             last_grid_line = grid_lines_obj_list[index - 1] if index > 0 else None
 
-            # @Dev probably will never use it?
-            # except IndexError as e:
-            #     last_grid_line = GridLine("Last Line",0)
-            #
             current_grid_line.next_grid_line = next_grid_line
             current_grid_line.last_grid_line = last_grid_line
 
         return grid_lines_obj_list
 
-    def calculate_grid_lines(self, _grid_start_price: float) -> List[float]:
-        """
-        _grid_start_price : First price where grid should start spanning above and below as in mid point for grid
-        """
-
-        _grid_start_price = round(_grid_start_price, self.round_price_to)
-
-        grid_lines: List[float] = [_grid_start_price]
-        # Grid line above mp
-        _next_line_price = _grid_start_price
-        # Grid line below mp
-        _last_line_price = _grid_start_price
-        # 5 grid lines above current mp
-        for _ in range(5):
-            _next_line_price = round(
-                _next_line_price + (_next_line_price * self.tp), self.round_price_to
-            )
-            grid_lines.append(_next_line_price)
-
-        # 5 grid lines below current mp
-        for _ in range(5):
-            _last_line_price = round(
-                _last_line_price - (_last_line_price * self.tp), self.round_price_to
-            )
-            grid_lines.append(_last_line_price)
-
-        grid_lines.sort()
-        return grid_lines
-
     def get_region(self, market_price: float) -> Tuple[float, float]:
-        """Returns (lower grid, upper grid)
-        market_price : current mp"""
+        """
+        For Later Use when Implement Dynamic Grids Which have Ability to Move with prices @@Dev not used anywhere for now
+        Returns (lower grid, upper grid)
+        market_price : current mp
+
+        """
 
         grid_lines = self.grid_lines
         distances = list(
@@ -152,4 +166,3 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
             return upper_grid, lower_grid
 
         return lower_grid, upper_grid
-
