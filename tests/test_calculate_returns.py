@@ -75,20 +75,23 @@ def test_calculate_grid_lines(setup):
     # wider as price tends to increase and distance tends to decrease as price
     # decreases i.e 10% of 100 is 110 and 10% of 1 is 1.1 hence Geomatric growth
     # ocurs for price above mid grid (grids are always odds in number
-    central_grid_index = len(grid_lines) // 2 
+    central_grid_index = len(grid_lines) // 2
     central_grid_price = grid_lines[central_grid_index]
 
     grids_above_mid_point = grid_lines[central_grid_index:]
     # sort the grid prices below current grid for % percision
     starting_grid_price = grid_lines[central_grid_index]
-    _decimal =  0.01
+    _decimal = 0.01
 
     for grid_price in grids_above_mid_point[1:]:
-        assert (round( (starting_grid_price * setup[1]["_distance_between_grids"] + starting_grid_price), setup[1]["_decimals"])
-            == pytest.approx(grid_price, _decimal)
-        )
+        assert round(
+            (
+                starting_grid_price * setup[1]["_distance_between_grids"]
+                + starting_grid_price
+            ),
+            setup[1]["_decimals"],
+        ) == pytest.approx(grid_price, _decimal)
         starting_grid_price = grid_price
-
 
     grids_below_mid_point = sorted(grid_lines[:central_grid_index], reverse=True)
     starting_grid_price = grids_below_mid_point[0]
@@ -96,15 +99,23 @@ def test_calculate_grid_lines(setup):
         print(starting_grid_price)
         print(grids_below_mid_point)
         print(grid_price)
-        assert (round((starting_grid_price - (starting_grid_price * setup[1]["_distance_between_grids"])), setup[1]["_decimals"])
-            == pytest.approx(grid_price, _decimal)
-        )
+        assert round(
+            (
+                starting_grid_price
+                - (starting_grid_price * setup[1]["_distance_between_grids"])
+            ),
+            setup[1]["_decimals"],
+        ) == pytest.approx(grid_price, _decimal)
         starting_grid_price = grid_price
-        
+
+def test_grid_line_objects(setup):
+    # Should always return GridLine object
+    grid_line_obj_list = setup[0].grid_lines_as_objects
+
+    for grid_obj in grid_line_obj_list:
+        assert type(grid_obj) == GridLine
 
 
 
-"""
-setup.grid_lines = self.calculate_grid_lines()
-setup.grid_lines_as_objects = self.create_grid_line_objects()
-"""
+
+
