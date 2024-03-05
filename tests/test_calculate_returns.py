@@ -114,8 +114,3 @@ def test_grid_line_objects(setup):
 
     for grid_obj in grid_line_obj_list:
         assert type(grid_obj) == GridLine
-
-
-
-
-
