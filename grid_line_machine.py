@@ -10,7 +10,6 @@ from typing import Any, List, Tuple, Iterator, Optional, Generic, TypeVar
 
 T = TypeVar("T")
 
-
 @dataclass
 class GridLine(Generic[T]):
     name: str
@@ -42,7 +41,8 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
         _number_of_grids_on_each_side_of_grid_start_price: int,
         _round_prices_to: int = 4,
     ):
-        """Given a _grid_start_price (x) will generate grids with (_number_of_grids_on_each_side_of_grid_start_price) on both sides of grid start price
+        """Given a _grid_start_price (x) will generate grids with (_number_of_grids_on_each_side_of_grid_start_price) 
+        on both sides of grid start price
 
         _grid_start_price: price where to center grid around
         _distance_between_grids: Distance between each grid in percentage i.e (0.1 == 10%)
@@ -54,13 +54,12 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
         )  # Points to which region price(0.104) currently is Region.region(0.103, 0.106) @Dev not used anywhere yet
 
         self.round_price_to = _round_prices_to
-        self.tp = _distance_between_grids
+        self.tp = round(_distance_between_grids,3)
         self.grids_on_each_side_of_grid_start_price = _number_of_grids_on_each_side_of_grid_start_price
         self.central_grid_price = round(_central_grid_price, _round_prices_to)
 
         # First calculate grid lines list bcz it is used by create grid line objects
         self.grid_lines = self.calculate_grid_lines()
-
 
         self.grid_lines_as_objects = self.create_grid_line_objects()
         self.current_grid_line_number = 0
@@ -79,7 +78,8 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
 
     def calculate_grid_lines(self) -> List[float]:
         """
-        _grid_start_price : First price where grid should start spanning above and below as in mid point for grid i.e central_grid_price
+        _grid_start_price : First price where grid should start spanning above
+                            and below as in mid point for grid i.e central_grid_price
         """
 
         _grid_start_price = self.central_grid_price
@@ -123,7 +123,8 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
         # current Grid Line current grid line     2
         # last Grid Line below current grid line  1
 
-        # add next/last properties to grid line objects making them a linked list with referances to last and next grid lines
+        # add next/last properties to grid line objects making them a linked list with referances 
+        # to last and next grid lines
         for index, grid_line_obj in enumerate(grid_lines_obj_list):
 
             try:
@@ -141,13 +142,15 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
 
     def get_region(self, market_price: float) -> Tuple[float, float]:
         """
-        For Later Use when Implement Dynamic Grids Which have Ability to Move with prices @@Dev not used anywhere for now
+        For Later Use when Implement Dynamic Grids Which have Ability to Move with
+        prices @@Dev not used anywhere for now
         Returns (lower grid, upper grid)
         market_price : current mp
 
         """
 
         grid_lines = self.grid_lines
+        # generates a list[(grid_lines, disctance)]
         distances = list(
             zip(
                 grid_lines,
@@ -156,8 +159,10 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
                     grid_lines,
                 ),
             )
-        )  # generates a list[(grid_lines, disctance)]
-        # Sort list based on distances @Dev lines are sorted based on distances, lower distance to mp doesn't equate to grid lines is lower then mp
+        )  
+        # Sort list based on distances @Dev lines are sorted based on distances,
+        # lower distance to mp doesn't
+        # equate to grid lines is lower then mp
         distances.sort(key=lambda _x: _x[1])
         lower_grid = distances[0][0]
         upper_grid = distances[1][0]
