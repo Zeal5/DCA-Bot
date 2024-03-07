@@ -1,111 +1,93 @@
 # Gate.io connector to Manage Orders
-import aiohttp
 import gate_api
+from gate_api import Order
+from gate_api.exceptions import GateApiException, ApiException
 
 # STD imports
 import time
-import hashlib
-import hmac
 import json
-from dataclasses import dataclass
-from enum import Enum
-import asyncio
+from multiprocessing.pool import ApplyResult
 
 # Internal Imports
 from . import GATEIO_KEY, GATEIO_SECRET
-
-
-class EndPoints(Enum):
-    """`url` endpoint url in host + prefix + url"""
-    my_trades: str = "/spot/my_trades"
-
-
-class HttpMethod(Enum):
-    """HTTP methods for signature verification"""
-    get: str = "GET"
-    post: str = "POST"
+from . import OrderToBePlaced, PlacedOrders
 
 
 class GateIO:
     def __init__(self):
-        self.key = GATEIO_KEY
-        self.secret = GATEIO_SECRET
-        self.headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-        self.host = "https://api.gateio.ws"
-        self.prefix = "/api/v4"
+        configuration = gate_api.Configuration(
+            host="https://api.gateio.ws/api/v4",
+            key=GATEIO_KEY,
+            secret=GATEIO_SECRET,
+        )
+        api_client = gate_api.ApiClient(configuration)
+        self.api_instance = gate_api.SpotApi(api_client)
 
-        # @DEV Make it such that each property is added to
-        # call automatically when required
+    async def place_batch_orders(self, orders: list[OrderToBePlaced] | OrderToBePlaced) -> list[PlacedOrders]:
+        """Place Batch of Orders For tickers Max 10 Orders/Ticker and Max 3 Tickers
 
-    def update_headers(self, headers: dict[str, str]):
-        self.headers.update(headers)
-
-    def gen_sign(self, method, url :EndPoints, query_string=None, payload_string=None):
-        """generate authentication headers
-
-        :param method: http request method
-        :param url: http resource path
-        :param query_string: query string
-        :param body: request body
-        :return: signature headers
+        `@param orders:` a list of gate-io.Order objects (required param for order price & amount
         """
-        key = self.key  # api_key
-        secret = self.secret  # api_secret
-        #@DEV chanhged here
-        url = self.prefix + url.value
-
-        t = time.time()
-        m = hashlib.sha512()
-        m.update((payload_string or "").encode("utf-8"))
-        hashed_payload = m.hexdigest()
-        s = "%s\n%s\n%s\n%s\n%s" % (method, url, query_string or "", hashed_payload, t)
-        sign = hmac.new(
-            secret.encode("utf-8"), s.encode("utf-8"), hashlib.sha512
-        ).hexdigest()
-        return {"KEY": key, "Timestamp": str(t), "SIGN": sign}
+        if not isinstance(orders, list):
+            orders = [orders]
 
 
-    async def open_orders(self):
-        url = EndPoints.my_trades
-        method = HttpMethod.get.value
-        sig = self.gen_sign(method,url)
-        self.update_headers(sig)
-        return await self.send_req(url)
+        try:
+            # Create a batch of orders
+            api_response:ApplyResult = self.api_instance.create_batch_orders(orders, async_req=True)
+            response = api_response.get()
+            orders_list = []
+            for order_placed in response:
+                response = PlacedOrders(
+                    price = order_placed.price,
+                    tokens = order_placed.amount,
+                    create_time = order_placed.create_time,
+                    currency_pair = order_placed.currency_pair,
+                    order_id= order_placed.id,
+                    side = order_placed.side.upper(),
+                    success = order_placed.succeeded)
+                orders_list.append(response)
+            return orders_list
+        except GateApiException as ex:
+            print(
+                "Gate api exception, label: %s, message: %s\n" % (ex.label, ex.message)
+            )
+            return [PlacedOrders(0,0,0,0,'NotPlaced','BUY',False)]
+        except ApiException as e:
+            print("Exception when calling SpotApi->list_all_open_orders: %s\n" % e)
+            return [PlacedOrders(0,0,0,0,'NotPlaced','BUY',False)]
 
-    async def send_req(self, _end_point : EndPoints):
-        print(self.headers)
-        url = self.host + self.prefix + _end_point.value
-        print(url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers = self.headers) as response:
-                print(response.status)
-                return await response.json()
+
+    async def get_all_open_orders(self):
+        """Returns All Open Order, Placed Limit Orders"""
+
+        # @DEV Page and Limit are hardcoded bcz no way i will place more then 100 trades at a time
+        page = 1
+        limit = 100
+        account = ""
+        try:
+            api_response:ApplyResult = self.api_instance.list_all_open_orders(
+                page=page, limit=limit, async_req=True
+            )
+            # while not api_response.ready():
+            #     await asyncio.sleep(1)
+            return api_response.get()
+
+        except GateApiException as ex:
+            print(
+                "Gate api exception, label: %s, message: %s\n" % (ex.label, ex.message)
+            )
+        except ApiException as e:
+            print("Exception when calling SpotApi->list_all_open_orders: %s\n" % e)
+
 
 
 async def main():
-    x = await GateIO().open_orders()
-    print(x)
-
+    x = await GateIO().place_batch_orders('x')
+    for i in x:
+        print(i)
 
     """
-    # Get Fee for Pair
-    # https://github.com/gateio/gateapi-python/blob/master/docs/SpotApi.md#get_fee
-
-
-
-    # Get All orders Placed (in case bot restarts) to avoid duplicate orders
-    # https://github.com/gateio/gateapi-python/blob/master/docs/SpotApi.md#list_all_open_orders
-
-
-
-    # Place Batch Orders When Bot Starts
-    # https://github.com/gateio/gateapi-python/blob/master/docs/SpotApi.md#create_batch_orders 
-
-
-
     # Place an Order If tp is hit On one or more orders 
     # https://github.com/gateio/gateapi-python/blob/master/docs/SpotApi.md#create_order
 
