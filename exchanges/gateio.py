@@ -23,40 +23,55 @@ class GateIO:
         api_client = gate_api.ApiClient(configuration)
         self.api_instance = gate_api.SpotApi(api_client)
 
-    async def place_batch_orders(self, orders: list[OrderToBePlaced] | OrderToBePlaced) -> list[PlacedOrders]:
+    async def place_batch_orders(
+        self, orders: list[OrderToBePlaced] | OrderToBePlaced
+    ) -> list[PlacedOrders]:
         """Place Batch of Orders For tickers Max 10 Orders/Ticker and Max 3 Tickers
 
-        `@param orders:` a list of gate-io.Order objects (required param for order price & amount
+        `@param orders:` a list of OrderToBePlaced objects (required param for order price & amount,currency_pair
         """
         if not isinstance(orders, list):
             orders = [orders]
 
+        list_of_gateio_order_type = []
+        for order in orders:
+            list_of_gateio_order_type.append(
+                Order(
+                    currency_pair=order.currency_pair,
+                    amount=f"{order.amount}",
+                    price=f"{order.price}",
+                    side=order.side,
+                    text="t-apiv4",
+                )
+            )
 
         try:
             # Create a batch of orders
-            api_response:ApplyResult = self.api_instance.create_batch_orders(orders, async_req=True)
+            api_response: ApplyResult = self.api_instance.create_batch_orders(
+                list_of_gateio_order_type, async_req=True
+            )
             response = api_response.get()
             orders_list = []
             for order_placed in response:
                 response = PlacedOrders(
-                    price = order_placed.price,
-                    tokens = order_placed.amount,
-                    create_time = order_placed.create_time,
-                    currency_pair = order_placed.currency_pair,
-                    order_id= order_placed.id,
-                    side = order_placed.side.upper(),
-                    success = order_placed.succeeded)
+                    price=order_placed.price,
+                    tokens=order_placed.amount,
+                    create_time=order_placed.create_time,
+                    currency_pair=order_placed.currency_pair,
+                    order_id=order_placed.id,
+                    side=order_placed.side.upper(),
+                    success=order_placed.succeeded,
+                )
                 orders_list.append(response)
             return orders_list
         except GateApiException as ex:
             print(
                 "Gate api exception, label: %s, message: %s\n" % (ex.label, ex.message)
             )
-            return [PlacedOrders(0,0,0,0,'NotPlaced','BUY',False)]
+            return [PlacedOrders(0, 0, 0, 0, "NotPlaced", "BUY", False)]
         except ApiException as e:
             print("Exception when calling SpotApi->list_all_open_orders: %s\n" % e)
-            return [PlacedOrders(0,0,0,0,'NotPlaced','BUY',False)]
-
+            return [PlacedOrders(0, 0, 0, 0, "NotPlaced", "BUY", False)]
 
     async def get_all_open_orders(self):
         """Returns All Open Order, Placed Limit Orders"""
@@ -66,7 +81,7 @@ class GateIO:
         limit = 100
         account = ""
         try:
-            api_response:ApplyResult = self.api_instance.list_all_open_orders(
+            api_response: ApplyResult = self.api_instance.list_all_open_orders(
                 page=page, limit=limit, async_req=True
             )
             # while not api_response.ready():
@@ -81,13 +96,23 @@ class GateIO:
             print("Exception when calling SpotApi->list_all_open_orders: %s\n" % e)
 
 
-
 async def main():
-    x = await GateIO().place_batch_orders('x')
+    order = OrderToBePlaced("METALDR_USDT",0.02,600,'buy')
+    x = await GateIO().place_batch_orders(order)
     for i in x:
         print(i)
 
     """
+    # Get All orders Placed (in case bot restarts) to avoid duplicate orders
+    # https://github.com/gateio/gateapi-python/blob/master/docs/SpotApi.md#list_all_open_orders
+
+
+
+    # Place Batch Orders When Bot Starts
+    # https://github.com/gateio/gateapi-python/blob/master/docs/SpotApi.md#create_batch_orders 
+
+
+
     # Place an Order If tp is hit On one or more orders 
     # https://github.com/gateio/gateapi-python/blob/master/docs/SpotApi.md#create_order
 
