@@ -1,6 +1,12 @@
 from dataclasses import dataclass
+from dotenv import load_dotenv
 from typing import Optional
 
+import os
+load_dotenv()
+
+GATEIO_KEY = os.environ.get("GATEIO_KEY")
+GATEIO_SECRET = os.environ.get("GATEIO_SECRET")
 
 
 @dataclass 
