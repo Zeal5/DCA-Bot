@@ -5,6 +5,8 @@ from grid_line_machine import GridLineManager, GridLine
 # from exchanges.gateio import simulate_price_movment_in_markets
 from exchanges.test import simulate_price_movment_in_markets
 
+# Internal Imports 
+from exchanges import Order
 
 # @Dev do Test on Inj around 40 consolidation
 TP = 0.1  # TP is % between 0-1 (i.e o == 0%, 1 == 100%)
@@ -60,6 +62,8 @@ class Profit:  # Keeps Track of all the Trades pnl
 def move_price(): # Price Tracker 
     # Create TEMP Variables for testing
     # grid start price is mid point for grid
+    a = Order(2,3)
+    print(f'order is {a}')
     _grid_start_price = 0.21380
 
     # The smallest price movment underlaying asset is capable of / pip
@@ -92,6 +96,5 @@ def move_price(): # Price Tracker
                 profit_counter.fill_order(_grid)
 
         last_price = current_price
-
 
 move_price()

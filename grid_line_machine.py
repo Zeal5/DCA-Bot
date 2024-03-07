@@ -9,7 +9,6 @@ from typing import Any, List, Tuple, Iterator, Optional, Generic, TypeVar
 
 
 T = TypeVar("T")
-
 @dataclass
 class GridLine(Generic[T]):
     name: str
@@ -17,7 +16,15 @@ class GridLine(Generic[T]):
     tp: Optional[float] = None
     last_grid_line: Optional[GridLine[T]] = None
     next_grid_line: Optional[GridLine[T]] = None
+
+    # New Values Shoul be Updated in GridLine Manager during creation of the GridLines
+    total_trades : int = 0
+    total_cost : float = 0
+    total_tokens : float = 0
     in_trade: Optional[bool] = False
+    do_not_buy_above_price: Optional[float] = None
+    do_not_buy_below_price: Optional[float] = None
+
 
     def __repr__(self):
 
@@ -41,21 +48,22 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
         _number_of_grids_on_each_side_of_grid_start_price: int,
         _round_prices_to: int = 4,
     ):
-        """Given a _grid_start_price (x) will generate grids with (_number_of_grids_on_each_side_of_grid_start_price) 
+        """Given a _grid_start_price (x) will generate grids with (_number_of_grids_on_each_side_of_grid_start_price)
         on both sides of grid start price
 
         _grid_start_price: price where to center grid around
         _distance_between_grids: Distance between each grid in percentage i.e (0.1 == 10%)
         _round_prices_to: how many decimals the price of ticker is"""
 
-
         self.in_region = (
             tuple()
         )  # Points to which region price(0.104) currently is Region.region(0.103, 0.106) @Dev not used anywhere yet
 
         self.round_price_to = _round_prices_to
-        self.tp = round(_distance_between_grids,3)
-        self.grids_on_each_side_of_grid_start_price = _number_of_grids_on_each_side_of_grid_start_price
+        self.tp = round(_distance_between_grids, 3)
+        self.grids_on_each_side_of_grid_start_price = (
+            _number_of_grids_on_each_side_of_grid_start_price
+        )
         self.central_grid_price = round(_central_grid_price, _round_prices_to)
 
         # First calculate grid lines list bcz it is used by create grid line objects
@@ -123,7 +131,7 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
         # current Grid Line current grid line     2
         # last Grid Line below current grid line  1
 
-        # add next/last properties to grid line objects making them a linked list with referances 
+        # add next/last properties to grid line objects making them a linked list with referances
         # to last and next grid lines
         for index, grid_line_obj in enumerate(grid_lines_obj_list):
 
@@ -143,10 +151,9 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
     def get_region(self, market_price: float) -> Tuple[float, float]:
         """
         For Later Use when Implement Dynamic Grids Which have Ability to Move with
-        prices @@Dev not used anywhere for now
+        prices @Dev not used anywhere for now
         Returns (lower grid, upper grid)
         market_price : current mp
-
         """
 
         grid_lines = self.grid_lines
@@ -159,7 +166,7 @@ class GridLineManager:  # Calculate Grid Lines and keeps track of between which 
                     grid_lines,
                 ),
             )
-        )  
+        )
         # Sort list based on distances @Dev lines are sorted based on distances,
         # lower distance to mp doesn't
         # equate to grid lines is lower then mp
