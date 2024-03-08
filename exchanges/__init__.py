@@ -25,9 +25,10 @@ class OrderToBePlaced:
     GridLine:do_not_buy_above_price and
     """
 
+    currency_pair:str
     price: float
     amount:float
-    currency_pair:str
+    side: Literal["buy", "sell"]
     do_not_buy_above_price: Optional[float] = None
     do_not_buy_below_price: Optional[float] = None
 
@@ -40,5 +41,6 @@ class PlacedOrders:
     order_id: int
     create_time: int
     currency_pair: str
-    side: Literal["BUY", "SELL"]
+    side: Literal["buy", "sell"]
     success: bool
+    label : Optional[str] = None
