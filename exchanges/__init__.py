@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from typing import Optional
 
 from typing import Literal
-from enum import Enum
 import os
 
 load_dotenv()
@@ -29,8 +28,6 @@ class OrderToBePlaced:
     price: float
     amount:float
     side: Literal["buy", "sell"]
-    do_not_buy_above_price: Optional[float] = None
-    do_not_buy_below_price: Optional[float] = None
 
 
 @dataclass
