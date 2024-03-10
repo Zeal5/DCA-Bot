@@ -35,7 +35,7 @@ class GateIO:
         prices_list = self.api_instance.list_tickers(async_req=True)
         await asyncio.sleep(1)
         prices_list = prices_list.get()
-        x = {prices.currency_pair: prices.highest_bid for prices in prices_list}
+        x:list[dict[str,str]] = {prices.currency_pair: prices.highest_bid for prices in prices_list}
         return x
 
     async def place_batch_orders(
