@@ -41,13 +41,6 @@ class GateIO:
             async with session.get(host + prefix + url,headers=headers) as r:
                 x = await  r.json()
                 return {data['currency_pair']: data['highest_bid'] for data in x}
-        # prices_list = self.api_instance.list_tickers(async_req=True)
-        # await asyncio.sleep(0.1)
-        # prices_list = prices_list.get()
-        # x:dict[str,str] = {prices.currency_pair: prices.highest_bid for prices in prices_list}
-        #
-        # self.api_client.gen_sign
-        # return x
 
     async def place_batch_orders(
         self, orders: list[OrderToBePlaced] | OrderToBePlaced
@@ -213,9 +206,9 @@ class GateIOConnector:
             _ticker = grid_line_manager.ticker
             GateIOConnector.prices_objects[_ticker] = PriceUpdate(_ticker)
 
-    async def check_order_status(self, _grid_line: GridLine, _ticker:str) -> bool:
+    async def check_order_status(self, _grid_line: GridLine, _ticker:str,_giom : GateIOManager) -> bool:
         # @DEV testing
-        order_status = await GateIOManager().get_order_status(_grid_line.order_id,_ticker )
+        order_status = await _giom.get_order_status(_grid_line.order_id,_ticker )
         if order_status.finish_as == "filled":
             if order_status.side == "buy":
                 _grid_line.buy_order_triggerd(order_status.amount)
@@ -226,7 +219,7 @@ class GateIOConnector:
         else:
             return False
 
-    async def buy(self, _grid_line: GridLine, _grid_line_manager: GridLineManager):
+    async def buy(self, _grid_line: GridLine, _grid_line_manager: GridLineManager, _giom:GateIOManager):
         # @DEV check if _grid_line exeeds do_not_buy price
         if (
             _grid_line.price > _grid_line_manager.do_not_buy_above_price
@@ -234,7 +227,7 @@ class GateIOConnector:
         ):
             # print("Restricted buy region")
             return
-        gateio_manager = GateIOManager()
+        gateio_manager = _giom
         status = await gateio_manager.buy(
             _order=_grid_line,
             _currency_pair=_grid_line_manager.ticker,
@@ -249,7 +242,7 @@ class GateIOConnector:
         else:
             print("Line 207 code should never reach here")
 
-    async def sell(self, _grid_line: GridLine, _grid_line_manager: GridLineManager):
+    async def sell(self, _grid_line: GridLine, _grid_line_manager: GridLineManager, _giom:GateIOManager):
         # @DEV check if _grid_line exeeds do_not_buy price
         if _grid_line is None:
             return
@@ -259,7 +252,7 @@ class GateIOConnector:
         ):
             # print("Restricted buy region")
             return
-        gateio_manager = GateIOManager()
+        gateio_manager =_giom
         status = await gateio_manager.sell(
             _order=_grid_line,
             _currency_pair=_grid_line_manager.ticker,
@@ -276,7 +269,7 @@ class GateIOConnector:
         else:
             print("Line 207 code should never reach here")
 
-    async def buy_batch_order(self, _mp: float, _grid_line_manager: GridLineManager):
+    async def buy_batch_order(self, _mp: float, _grid_line_manager: GridLineManager, _giom: GateIOManager):
         _grids_where_order_are_to_be_placed = []
         lower_grid_price, higher_grid_price = _grid_line_manager.get_region(_mp)
 
@@ -289,7 +282,7 @@ class GateIOConnector:
             ):
                 _grids_where_order_are_to_be_placed.append(_each_grid)
 
-        gate_io_manager = GateIOManager()
+        gate_io_manager = _giom
         _statuses = await gate_io_manager.batch_buy(
             _grid_lines=_grids_where_order_are_to_be_placed,
             _currency_pair=_grid_line_manager.ticker,
@@ -324,7 +317,8 @@ class GateIOConnector:
 
     async def ticker_watcher(self, _grid_line_manager: GridLineManager):
         """Called with GridLineManager as param and places order on Gateio"""
-        # @DEV testing
+        # gateio manager
+        giom = GateIOManager()
         print(_grid_line_manager.grid_lines)
         input("wait")
         _ticker = _grid_line_manager.ticker
@@ -336,7 +330,7 @@ class GateIOConnector:
             await asyncio.sleep(0.1)
             last_price = GateIOConnector.prices_objects[_ticker].market_price or 0
 
-        await self.buy_batch_order(last_price, _grid_line_manager)
+        await self.buy_batch_order(last_price, _grid_line_manager,giom)
         last_lower_grid, last_higher_grid = last_price, last_price
         while True:
             market_price:float = GateIOConnector.prices_objects[_ticker].market_price
@@ -345,42 +339,41 @@ class GateIOConnector:
             # DEV check if price is within 1% of any grid
             price_in_lower_grid_range = False
             price_in_higher_grid_range = False
-            if round(market_price - (0.01 * market_price),_decimals) <  lower_grid :
+            if round(market_price - (0.005 * market_price),_decimals) <  lower_grid :
                 price_in_lower_grid_range  = True
 
-            if round(market_price + (0.01 * market_price),_decimals) > higher_grid :
+            if round(market_price + (0.005 * market_price),_decimals) > higher_grid :
                 price_in_higher_grid_range = True
 
             # if market_price != last_price:
             print(f"{_ticker}  mp: {round(market_price,_decimals)}", end="\r")
             if  (last_lower_grid != lower_grid and last_higher_grid != higher_grid) or price_in_lower_grid_range or price_in_higher_grid_range:
                 print(f"REGION CHANGED:{lower_grid} : {higher_grid}")
-                await self.manage_trades(market_price, _grid_line_manager)
+                await self.manage_trades(market_price, _grid_line_manager, giom)
 
                 # last_price = market_price
             await asyncio.sleep(0.5)
             last_lower_grid, last_higher_grid = lower_grid, higher_grid
 
-    async def manage_trades(self,_mp:float,_grid_line_manager : GridLineManager):
-        _decimals = _grid_line_manager.round_price_to
+    async def manage_trades(self,_mp:float,_grid_line_manager : GridLineManager, _giom:GateIOManager):
         for _grid_line in _grid_line_manager:
             # Handle if limit order is still there 
             # for lines below mp
             if _grid_line.buy_order_placed:
                 # check if buy order placed got filled
-                if await self.check_order_status(_grid_line,_grid_line_manager.ticker):
-                    await self.sell(_grid_line.next_grid_line, _grid_line_manager) 
+                if await self.check_order_status(_grid_line,_grid_line_manager.ticker,_giom):
+                    await self.sell(_grid_line.next_grid_line, _grid_line_manager,_giom) 
 
             # for gridlines below mp with active sell order 
             # check if sell order was triggerd to place buy order
             elif _grid_line.sell_order_placed:
-                if await self.check_order_status(_grid_line,_grid_line_manager.ticker):
-                    await self.buy(_grid_line.last_grid_line,_grid_line_manager)
+                if await self.check_order_status(_grid_line,_grid_line_manager.ticker,_giom):
+                    await self.buy(_grid_line.last_grid_line,_grid_line_manager, _giom)
 
             # for gridlines below mp with no active sell order nor buy order
             # place buy order
             elif _grid_line.price < _mp and not (_grid_line.buy_order_filled or _grid_line.buy_order_placed):
-                await self.buy(_grid_line,_grid_line_manager)
+                await self.buy(_grid_line,_grid_line_manager, _giom)
 
 
 
