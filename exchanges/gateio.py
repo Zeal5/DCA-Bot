@@ -194,6 +194,9 @@ class GateIOManager:
     async def get_all_open_orders(self) -> OpenOrders:
         return await self.gateio_instance.get_all_open_orders()
 
+    async def fetch_prices(self):
+        return await self.gateio_instance.prices()
+
 
 class GateIOConnector:
     """Takes in multiple lists of GridLIne objects then runs in loop to keep track
@@ -350,20 +353,21 @@ class GateIOConnector:
         """Start Loop to track prices for each class
         Seperate Each ticker tracking create a worker using asyncio.get_loop"""
         _tasks = []
+        _giom = GateIOManager()
         # Task 1 global_price_updater
         # * each GridLineManager watcher i.e : ticker_watcher
         loop = asyncio.get_event_loop()
         _tasks.append(
-            loop.create_task(self.global_price_updater())
+            loop.create_task(self.global_price_updater(_giom))
         )  # each task is grid for unique ticker
         for _grid_line_manager in self.grid_line_managers:
-            _tasks.append(self.ticker_watcher(_grid_line_manager))
+            _tasks.append(self.ticker_watcher(_grid_line_manager,_giom))
         await asyncio.gather(*_tasks)
 
-    async def ticker_watcher(self, _grid_line_manager: GridLineManager):
+    async def ticker_watcher(self, _grid_line_manager: GridLineManager, _giom:GateIOManager):
         """Called with GridLineManager as param and places order on Gateio"""
         # gateio manager
-        giom = GateIOManager()
+        giom = _giom
         _ticker = _grid_line_manager.ticker
         print(_ticker, _grid_line_manager.grid_lines)
         _decimals = _grid_line_manager.round_price_to
@@ -399,7 +403,7 @@ class GateIOConnector:
                 await self.manage_trades(market_price, _grid_line_manager, giom)
 
                 # last_price = market_price
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1.5)
             last_lower_grid, last_higher_grid = lower_grid, higher_grid
 
     async def manage_trades(
@@ -432,17 +436,23 @@ class GateIOConnector:
             ):
                 await self.buy(_grid_line, _grid_line_manager, _giom)
 
-    async def global_price_updater(self):
-        gate = GateIO()
+    async def global_price_updater(self,_giom:GateIOManager):
         while True:
-            await GateIOConnector.update_prices(gate)
+            await asyncio.sleep(2)
+            try:
+                await GateIOConnector.update_prices(_giom)
+            except Exception as e:
+                print(f"Connection error Reconnecting in 3 ... {e}")
+                await asyncio.sleep(3)
+
 
     @classmethod
-    async def update_prices(cls, _gate_io: GateIO):
+    async def update_prices(cls,_giom:GateIOManager):
         """Call spot/ticker endpoint to fetch all prices and then get prices of
         tickers in tickers_list
         @DEVOnly update last price"""
 
-        gate_prices = await _gate_io.prices()
+        # gate_prices = await _gate_io.prices()
+        gate_prices =  await _giom.fetch_prices()
         for k, v in cls.prices_objects.items():  # k == ticker, v == price
             cls.prices_objects[k].market_price = float(gate_prices[k])
