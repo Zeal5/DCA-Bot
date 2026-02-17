@@ -14,8 +14,6 @@ logging.basicConfig(
 from typing import List, Tuple, Optional, Generic, TypeVar
 
 
-
-
 T = TypeVar("T")
 @dataclass
 class GridLine(Generic[T]):

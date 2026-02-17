@@ -1,0 +1,84 @@
+2024-03-12 00:12:16 INFO     grid_line_7 Buy Order Placed
+2024-03-12 00:12:16 INFO     
+    
+    grid_line_6    0.09065          0 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:False BOF:False
+    SOP:False SOF:False 
+    
+    grid_line_7    0.10072 529321000014 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:True BOF:False
+    SOP:False SOF:False
+    
+    grid_line_8    0.11191          0 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:False BOF:False
+    SOP:False SOF:False
+    
+2024-03-12 00:12:16 INFO     grid_line_8 Buy Order Placed
+2024-03-12 00:12:16 INFO     
+    
+    grid_line_7    0.10072 529321000014 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:True BOF:False
+    SOP:False SOF:False 
+    
+    grid_line_8    0.11191 529321000026 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:True BOF:False
+    SOP:False SOF:False
+    
+    grid_line_9    0.12434          0 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:False BOF:False
+    SOP:False SOF:False
+    
+2024-03-12 00:12:16 INFO     grid_line_9 Buy Order Placed
+2024-03-12 00:12:16 INFO     
+    
+    grid_line_8    0.11191 529321000026 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:True BOF:False
+    SOP:False SOF:False 
+    
+    grid_line_9    0.12434 529321000035 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:True BOF:False
+    SOP:False SOF:False
+    
+    grid_line_10    0.13815          0 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:False BOF:False
+    SOP:False SOF:False
+    
+2024-03-12 00:12:16 INFO     grid_line_10 Buy Order Placed
+2024-03-12 00:12:16 INFO     
+    
+    grid_line_9    0.12434 529321000035 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:True BOF:False
+    SOP:False SOF:False 
+    
+    grid_line_10    0.13815 529321000040 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:True BOF:False
+    SOP:False SOF:False
+    
+    grid_line_11     0.1535          0 
+    cost:         0 tokens:         0 fee:         0
+    buy:0 sells:         0
+    BOP:False BOF:False
+    SOP:False SOF:False
+    
